@@ -1,6 +1,9 @@
 postgres:
 	docker run --name postgres14 -p 8080:5432 -e POSTGRES_USER=root -e POSTGRES_PASSWORD=password -d postgres:14-alpine
 
+startpostgres:
+	docker run postgres14
+
 createdb:
 	docker exec -it postgres14 createdb --username=root --owner=root simple_bank
 
@@ -19,4 +22,7 @@ sqlc:
 test:
 	go test -v -cover ./...
 
-.PHONY: postgres createdb dropdb migrateup migratedown sqlc
+server:
+	go run main.go
+
+.PHONY: postgres startpostgres createdb dropdb migrateup migratedown sqlc server
