@@ -9,7 +9,7 @@ on:
 jobs:
 
   test:
-    name: Test
+    name: Test CI
     runs-on: ubuntu-latest
 
     services:
@@ -46,5 +46,5 @@ jobs:
     - name: Run migrations
       run: make migrateup
 
-    - name: Test
+    - name: Run Test
       run: make test
