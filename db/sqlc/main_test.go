@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"simplebank/util"
 	"testing"
 
 	_ "github.com/lib/pq"
@@ -12,14 +13,12 @@ import (
 var testQueries *Queries
 var testDB *sql.DB
 
-const (
-	dbdriver = "postgres"
-	dbsource = "postgresql://root:password@localhost:8080/simple_bank?sslmode=disable"
-)
-
 func TestMain(m *testing.M) {
-	var err error
-	testDB, err = sql.Open(dbdriver, dbsource)
+	config, err := util.LoadConfig("../..")
+	if err != nil {
+		log.Fatalln("cannot load env variables", err)
+	}
+	testDB, err = sql.Open(config.DBDriver, config.DBSource)
 	if err != nil {
 		log.Fatalln(err)
 	}
