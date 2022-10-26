@@ -165,7 +165,8 @@ func TestCreateTransferAPI(t *testing.T) {
 				Amount:        tc.arg.Amount,
 				Currency:      util.USD,
 			}
-			reqVal, _ := json.Marshal(transferReq)
+			reqVal, err := json.Marshal(transferReq)
+			require.NoError(t, err)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("POST", "/transfers", bytes.NewBuffer(reqVal))

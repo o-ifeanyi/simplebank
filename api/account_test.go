@@ -85,7 +85,8 @@ func TestCreateAccountAPI(t *testing.T) {
 				Owner:    tc.arg.Owner,
 				Currency: tc.arg.Currency,
 			}
-			reqVal, _ := json.Marshal(createAccountReq)
+			reqVal, err := json.Marshal(createAccountReq)
+			require.NoError(t, err)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("POST", "/accounts", bytes.NewBuffer(reqVal))
