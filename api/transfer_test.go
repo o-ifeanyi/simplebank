@@ -155,7 +155,7 @@ func TestCreateTransferAPI(t *testing.T) {
 			defer ctrl.Finish()
 
 			store := mockdb.NewMockStore(ctrl)
-			server := NewServer(store)
+			server := newTestServer(t, store)
 
 			tc.buildStubs(store)
 
