@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"net/http"
 	db "simplebank/db/sqlc"
 	"simplebank/util"
@@ -70,6 +71,57 @@ func (server *Server) createUser(c *gin.Context) {
 	}
 
 	res := newUserResponse(user)
+
+	c.JSON(http.StatusOK, res)
+}
+
+type loginUserRequest struct {
+	Username string `json:"username" binding:"required,alphanum"`
+	Password string `json:"password" binding:"required,min=6"`
+}
+
+type loginUserResponse struct {
+	AccessToken string       `json:"access_token"`
+	User        userResponse `json:"user"`
+}
+
+func (server *Server) loginUser(c *gin.Context) {
+	var req loginUserRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, server.errorResponse(err))
+		return
+	}
+
+	user, err := server.store.GetUser(c, req.Username)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, server.errorResponse(err))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, server.errorResponse(err))
+		return
+	}
+
+	err = util.CompareHashAndPassword(user.HashedPassword, req.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, server.errorResponse(err))
+		return
+	}
+
+	accessToken, err := server.tokenMaker.CreateToken(
+		req.Username,
+		server.config.TokenDuration,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, server.errorResponse(err))
+		return
+	}
+
+	res := loginUserResponse{
+		AccessToken: accessToken,
+		User:        newUserResponse(user),
+	}
 
 	c.JSON(http.StatusOK, res)
 }
