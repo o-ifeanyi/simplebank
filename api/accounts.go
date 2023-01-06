@@ -2,15 +2,16 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
 	db "simplebank/db/sqlc"
+	"simplebank/token"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
 )
 
 type createAccountReq struct {
-	Owner    string `json:"owner" binding:"required"`
 	Currency string `json:"currency" binding:"required,currency"`
 }
 
@@ -18,12 +19,13 @@ func (server *Server) createAccount(c *gin.Context) {
 	var req createAccountReq
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, server.errorResponse(err))
+		c.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
+	payload := c.MustGet(authorizationPayloadKey).(*token.Payload)
 	arg := db.CreateAccountParams{
-		Owner:    req.Owner,
+		Owner:    payload.Username,
 		Balance:  0,
 		Currency: req.Currency,
 	}
@@ -33,11 +35,11 @@ func (server *Server) createAccount(c *gin.Context) {
 		if pgErr, ok := err.(*pq.Error); ok {
 			switch pgErr.Code.Name() {
 			case "foreign_key_violation", "unique_violation":
-				c.JSON(http.StatusForbidden, server.errorResponse(err))
+				c.JSON(http.StatusForbidden, errorResponse(err))
 				return
 			}
 		}
-		c.JSON(http.StatusInternalServerError, server.errorResponse(err))
+		c.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
@@ -52,17 +54,24 @@ func (server *Server) getAccount(c *gin.Context) {
 	var req getAccountReq
 
 	if err := c.ShouldBindUri(&req); err != nil {
-		c.JSON(http.StatusBadRequest, server.errorResponse(err))
+		c.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
 	acc, err := server.store.GetAccount(c, req.ID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, server.errorResponse(err))
+			c.JSON(http.StatusNotFound, errorResponse(err))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, server.errorResponse(err))
+		c.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+	payload := c.MustGet(authorizationPayloadKey).(*token.Payload)
+
+	if acc.Owner != payload.Username {
+		err := errors.New("account doesn't belong to the authenticated user")
+		c.JSON(http.StatusUnauthorized, errorResponse(err))
 		return
 	}
 
@@ -78,18 +87,20 @@ func (server *Server) listAccounts(c *gin.Context) {
 	var req listAccountsReq
 
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, server.errorResponse(err))
+		c.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
+	payload := c.MustGet(authorizationPayloadKey).(*token.Payload)
 	arg := db.ListAccountsParams{
+		Owner:  payload.Username,
 		Limit:  req.PageSize,
 		Offset: (req.PageID - 1) * req.PageSize,
 	}
 
 	accs, err := server.store.ListAccounts(c, arg)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, server.errorResponse(err))
+		c.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 

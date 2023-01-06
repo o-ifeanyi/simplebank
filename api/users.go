@@ -40,13 +40,13 @@ func (server *Server) createUser(c *gin.Context) {
 	var req createUserRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, server.errorResponse(err))
+		c.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
 	hashedPassord, err := util.HashPassword(req.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, server.errorResponse(err))
+		c.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
@@ -62,11 +62,11 @@ func (server *Server) createUser(c *gin.Context) {
 		if pgErr, ok := err.(*pq.Error); ok {
 			switch pgErr.Code.Name() {
 			case "unique_violation":
-				c.JSON(http.StatusForbidden, server.errorResponse(err))
+				c.JSON(http.StatusForbidden, errorResponse(err))
 				return
 			}
 		}
-		c.JSON(http.StatusInternalServerError, server.errorResponse(err))
+		c.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
@@ -89,23 +89,23 @@ func (server *Server) loginUser(c *gin.Context) {
 	var req loginUserRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, server.errorResponse(err))
+		c.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
 
 	user, err := server.store.GetUser(c, req.Username)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, server.errorResponse(err))
+			c.JSON(http.StatusNotFound, errorResponse(err))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, server.errorResponse(err))
+		c.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
 	err = util.CompareHashAndPassword(user.HashedPassword, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, server.errorResponse(err))
+		c.JSON(http.StatusUnauthorized, errorResponse(err))
 		return
 	}
 
@@ -114,7 +114,7 @@ func (server *Server) loginUser(c *gin.Context) {
 		server.config.TokenDuration,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, server.errorResponse(err))
+		c.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
